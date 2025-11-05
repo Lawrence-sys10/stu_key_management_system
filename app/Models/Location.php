@@ -30,6 +30,11 @@ class Location extends Model
         return $this->hasMany(Key::class);
     }
 
+    public function keyLogs()
+    {
+        return $this->hasManyThrough(KeyLog::class, Key::class);
+    }
+
     // Scopes
     public function scopeActive($query)
     {

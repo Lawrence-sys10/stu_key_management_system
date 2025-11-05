@@ -2,28 +2,118 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Notification extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
-        'type',
-        'notifiable_type',
-        'notifiable_id',
-        'data',
-        'read_at'
+        'key_log_id',
+        'channel',
+        'to',
+        'template_key',
+        'payload_json',
+        'status',
+        'sent_at',
+        'error',
     ];
 
     protected $casts = [
-        'data' => 'array',
-        'read_at' => 'datetime',
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'payload_json' => 'array',
+        'sent_at' => 'datetime',
     ];
 
-    public function notifiable(): MorphTo
+    // Relationships
+    public function keyLog()
     {
-        return $this->morphTo();
+        return $this->belongsTo(KeyLog::class);
+    }
+
+    // Scopes
+    public function scopePending($query)
+    {
+        return $query->where('status', 'pending');
+    }
+
+    public function scopeSent($query)
+    {
+        return $query->where('status', 'sent');
+    }
+
+    public function scopeFailed($query)
+    {
+        return $query->where('status', 'failed');
+    }
+
+    public function scopeSms($query)
+    {
+        return $query->where('channel', 'sms');
+    }
+
+    public function scopeWhatsapp($query)
+    {
+        return $query->where('channel', 'whatsapp');
+    }
+
+    public function scopeEmail($query)
+    {
+        return $query->where('channel', 'email');
+    }
+
+    public function scopeForTemplate($query, $templateKey)
+    {
+        return $query->where('template_key', $templateKey);
+    }
+
+    // Methods
+    public function markAsSent()
+    {
+        $this->update([
+            'status' => 'sent',
+            'sent_at' => now(),
+            'error' => null,
+        ]);
+        return $this;
+    }
+
+    public function markAsFailed($error)
+    {
+        $this->update([
+            'status' => 'failed',
+            'error' => $error,
+        ]);
+        return $this;
+    }
+
+    public function isPending()
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isSent()
+    {
+        return $this->status === 'sent';
+    }
+
+    public function isFailed()
+    {
+        return $this->status === 'failed';
+    }
+
+    public function getPayloadValue($key, $default = null)
+    {
+        return $this->payload_json[$key] ?? $default;
+    }
+
+    public function getChannelLabelAttribute()
+    {
+        return match($this->channel) {
+            'sms' => 'SMS',
+            'whatsapp' => 'WhatsApp',
+            'email' => 'Email',
+            default => ucfirst($this->channel),
+        };
     }
 }

@@ -10,9 +10,21 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
+    ->withMiddleware(function (Middleware $middleware) {
+        // Register your custom middleware
+        $middleware->alias([
+            'role' => App\Http\Middleware\RoleMiddleware::class,
+        ]);
+
+        // You can also add other middleware registrations here
+        $middleware->web(append: [
+            // ... other middleware
+        ]);
+
+        $middleware->api(append: [
+            // ... other middleware  
+        ]);
     })
-    ->withExceptions(function (Exceptions $exceptions): void {
+    ->withExceptions(function (Exceptions $exceptions) {
         //
     })->create();

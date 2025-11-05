@@ -2,25 +2,43 @@
 
 namespace App\Models;
 
-use App\Traits\HolderTrait;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use App\Traits\HolderTrait;
 
 class PermanentStaffManual extends Model
 {
-    use HolderTrait;
+    use HasFactory, SoftDeletes, HolderTrait;
+
+    protected $table = 'permanent_staff_manual';
 
     protected $fillable = [
+        'staff_id',
         'name',
-        'identification_number',
         'phone',
-        'email',
-        'department',
-        'position',
-        'status'
+        'dept',
+        'added_by',
+        'notes',
     ];
 
     protected $casts = [
-        'created_at' => 'datetime',
-        'updated_at' => 'datetime'
+        'deleted_at' => 'datetime',
     ];
+
+    // Relationships
+    public function addedBy()
+    {
+        return $this->belongsTo(User::class, 'added_by');
+    }
+
+    // Scopes
+    public function scopeSearch($query, $search)
+    {
+        return $query->where(function ($q) use ($search) {
+            $q->where('name', 'like', "%{$search}%")
+              ->orWhere('staff_id', 'like', "%{$search}%")
+              ->orWhere('phone', 'like', "%{$search}%");
+        });
+    }
 }
