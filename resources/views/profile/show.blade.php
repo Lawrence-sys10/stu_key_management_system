@@ -55,7 +55,7 @@
                        class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
                         <i class="fas fa-edit mr-2"></i> Edit Profile
                     </a>
-                    <a href="{{ route('profile.update-password') }}" 
+                    <a href="{{ route('profile.password.update') }}" 
                        class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
                         <i class="fas fa-lock mr-2"></i> Change Password
                     </a>

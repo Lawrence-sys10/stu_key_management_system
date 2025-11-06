@@ -19,7 +19,7 @@ class KioskMiddleware
 
         // Check if security officer is on shift
         if (!auth()->user()->isOnShift() && !$request->is('kiosk/start-shift')) {
-            return redirect()->route('kiosk.start-shift')
+            return redirect()->route('profile.shift-history')
                 ->with('warning', 'Please start your shift before accessing the kiosk.');
         }
 

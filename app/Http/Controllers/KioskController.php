@@ -9,6 +9,7 @@ use App\Models\HrStaff;
 use App\Models\PermanentStaffManual;
 use App\Models\TemporaryStaff;
 use App\Models\User;
+use App\Models\Setting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -17,7 +18,12 @@ class KioskController extends Controller
 {
     public function index()
     {
-        return view('kiosk.index');
+        $recentActivity = KeyLog::with(['key', 'receiver'])
+            ->latest()
+            ->limit(10)
+            ->get();
+            
+        return view('kiosk.index', compact('recentActivity'));
     }
 
     public function scan()
@@ -64,12 +70,12 @@ class KioskController extends Controller
             'holder_name' => 'required|string|max:255',
             'holder_phone' => 'required|string|max:20',
             'expected_return_at' => 'nullable|date|after:now',
-            'signature' => 'nullable|string', // base64 encoded signature
+            'signature' => 'nullable|string',
             'photo' => 'nullable|image|max:2048',
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        DB::transaction(function () use ($validated, $key) {
+        DB::transaction(function () use ($validated, $key, $request) {
             // Handle file uploads
             $signaturePath = null;
             $photoPath = null;
@@ -139,7 +145,7 @@ class KioskController extends Controller
             'notes' => 'nullable|string|max:1000',
         ]);
 
-        DB::transaction(function () use ($validated, $key) {
+        DB::transaction(function () use ($validated, $key, $request) {
             // Handle file uploads
             $signaturePath = null;
             $photoPath = null;
@@ -152,13 +158,43 @@ class KioskController extends Controller
                 $photoPath = $request->file('photo')->store('key-photos', 'public');
             }
 
-            // Create checkin log
-            $log = $key->checkin(
-                auth()->id(),
-                $signaturePath,
-                $photoPath,
-                $validated['notes']
-            );
+            // Get the current checkout log to reference it
+            $checkoutLog = KeyLog::where('key_id', $key->id)
+                ->where('action', 'checkout')
+                ->whereNull('returned_from_log_id')
+                ->latest()
+                ->first();
+
+            // Create checkin log with all required fields
+            $log = KeyLog::create([
+                'key_id' => $key->id,
+                'action' => 'checkin',
+                'holder_type' => $checkoutLog ? $checkoutLog->holder_type : 'temp',
+                'holder_id' => $checkoutLog ? $checkoutLog->holder_id : null,
+                'holder_name' => $checkoutLog ? $checkoutLog->holder_name : 'Returned by Security',
+                'holder_phone' => $checkoutLog ? $checkoutLog->holder_phone : 'N/A',
+                'receiver_user_id' => auth()->id(),
+                'receiver_name' => auth()->user()->name,
+                'returned_from_log_id' => $checkoutLog ? $checkoutLog->id : null,
+                'signature_path' => $signaturePath,
+                'photo_path' => $photoPath,
+                'notes' => $validated['notes'],
+                'verified' => true, // Assuming checkins are automatically verified
+                'discrepancy' => false,
+            ]);
+
+            // Update the checkout log to mark it as returned
+            if ($checkoutLog) {
+                $checkoutLog->update([
+                    'returned_from_log_id' => $log->id
+                ]);
+            }
+
+            // Update key status
+            $key->update([
+                'status' => 'available',
+                'last_log_id' => $log->id,
+            ]);
 
             // Queue notifications
             if (Setting::getValue('notifications.return_enabled', false)) {
@@ -178,7 +214,8 @@ class KioskController extends Controller
             return response()->json([]);
         }
 
-        $results = [];
+        // Start with an empty collection
+        $results = collect();
 
         // Search HR Staff
         $hrStaff = HrStaff::active()
@@ -197,7 +234,7 @@ class KioskController extends Controller
                 ];
             });
 
-        $results = $hrStaff->merge($results);
+        $results = $results->merge($hrStaff);
 
         // Search Permanent Manual Staff
         $permStaff = PermanentStaffManual::search($search)

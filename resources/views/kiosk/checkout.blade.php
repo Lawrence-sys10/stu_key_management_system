@@ -173,15 +173,6 @@
 let signaturePad;
 let cameraStream;
 
-document.addEventListener('DOMContent
-# Continue with Step 8 Views...
-
-# 7. Create Kiosk Checkout View (continued)
-@'
-<script>
-let signaturePad;
-let cameraStream;
-
 document.addEventListener('DOMContentLoaded', function() {
     // Initialize signature pad
     const canvas = document.getElementById('signature-pad');

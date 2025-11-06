@@ -33,24 +33,58 @@ class ProfileController extends Controller
     }
 
     public function edit()
-{
-    $user = auth()->user();
-    
-    // Debug: Log information
-    \Log::info('Profile edit accessed', [
-        'user_id' => $user->id,
-        'user_name' => $user->name,
-        'route' => request()->url()
-    ]);
-    
-    // Debug: Check if we can access user properties
-    logger('User phone: ' . ($user->phone ?? 'NOT SET'));
-    logger('User email: ' . $user->email);
-    
-    // If you want to see what's happening, uncomment this line:
-    // dd($user); // This will dump user data and stop execution
-    
-    return view('profile.edit', compact('user'));
+    {
+        $user = auth()->user();
+        
+        // Debug: Log information
+        \Log::info('Profile edit accessed', [
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'route' => request()->url()
+        ]);
+        
+        // Debug: Check if we can access user properties
+        logger('User phone: ' . ($user->phone ?? 'NOT SET'));
+        logger('User email: ' . $user->email);
+        
+        // If you want to see what's happening, uncomment this line:
+        // dd($user); // This will dump user data and stop execution
+        
+        return view('profile.edit', compact('user'));
+    }
+
+    // ADD THIS METHOD - Profile Update
+    public function update(Request $request)
+    {
+        $user = auth()->user();
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', 'max:255', Rule::unique('users')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:20'],
+        ]);
+
+        try {
+            $user->update($validated);
+            
+            \Log::info('Profile updated successfully', [
+                'user_id' => $user->id,
+                'changes' => $validated
+            ]);
+            
+            return redirect()->route('profile.show')
+                ->with('success', 'Profile updated successfully!');
+                
+        } catch (\Exception $e) {
+            \Log::error('Profile update failed', [
+                'user_id' => $user->id,
+                'error' => $e->getMessage()
+            ]);
+            
+            return redirect()->back()
+                ->with('error', 'Failed to update profile. Please try again.')
+                ->withInput();
+        }
     }
 
     public function updatePassword(Request $request)
@@ -128,4 +162,3 @@ class ProfileController extends Controller
         return view('profile.password');
     }
 }
- 

@@ -20,15 +20,15 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     
-    // Profile Routes
+    // Profile Routes - FIXED: Corrected password route name
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
         Route::put('/update', [ProfileController::class, 'update'])->name('update');
         
-        // Password routes
+        // Password routes - FIXED: Changed to consistent naming
         Route::get('/password', [ProfileController::class, 'editPassword'])->name('password.edit');
-        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('update-password');
+        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update'); // Fixed: changed from 'update-password'
         
         Route::get('/activity', [ProfileController::class, 'activityLog'])->name('activity');
         Route::get('/shifts', [ProfileController::class, 'shiftHistory'])->name('shift-history');
@@ -37,7 +37,7 @@ Route::middleware(['auth'])->group(function () {
     });
 
     // Kiosk Routes
-    Route::prefix('kiosk')->name('kiosk.')->middleware(['role:security', 'kiosk'])->group(function () {
+    Route::prefix('kiosk')->name('kiosk.')->middleware(['role:admin|security', 'kiosk'])->group(function () {
         Route::get('/', [KioskController::class, 'index'])->name('index');
         Route::get('/scan', [KioskController::class, 'scan'])->name('scan');
         Route::post('/scan/process', [KioskController::class, 'processScan'])->name('process-scan');
@@ -117,7 +117,7 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    // Report Routes - UPDATED: Added all the new report routes
+    // Report Routes
     Route::prefix('reports')->name('reports.')->middleware(['role:admin|hr|auditor'])->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/analytics', [ReportController::class, 'analyticsDashboard'])->name('analytics');
@@ -127,7 +127,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/staff-activity', [ReportController::class, 'staffActivity'])->name('staff-activity');
         Route::get('/security-performance', [ReportController::class, 'securityPerformance'])->name('security-performance');
         
-        // NEW REPORT ROUTES ADDED
+        // NEW REPORT ROUTES
         Route::get('/location-usage', [ReportController::class, 'locationUsage'])->name('location-usage');
         Route::get('/holder-statistics', [ReportController::class, 'holderStatistics'])->name('holder-statistics');
         Route::get('/system-metrics', [ReportController::class, 'systemMetrics'])->name('system-metrics');
@@ -171,16 +171,17 @@ Route::middleware(['auth'])->group(function () {
         print_r($sampleData->toArray());
         echo "</pre>";
     });
+    
     Route::get('/test-profile-edit', function() {
-    $user = auth()->user();
-    return response()->json([
-        'user_id' => $user->id,
-        'user_name' => $user->name,
-        'user_email' => $user->email,
-        'user_phone' => $user->phone,
-        'message' => 'User data is available'
-    ]);
-});
+        $user = auth()->user();
+        return response()->json([
+            'user_id' => $user->id,
+            'user_name' => $user->name,
+            'user_email' => $user->email,
+            'user_phone' => $user->phone,
+            'message' => 'User data is available'
+        ]);
+    });
     
     Route::post('/email/verification-notification', function () {
         return redirect()->back()->with('status', 'Verification link sent!');

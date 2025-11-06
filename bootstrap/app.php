@@ -14,11 +14,14 @@ return Application::configure(basePath: dirname(__DIR__))
         // Register your custom middleware
         $middleware->alias([
             'role' => App\Http\Middleware\RoleMiddleware::class,
+            'kiosk' => App\Http\Middleware\KioskMiddleware::class,
+
         ]);
 
         // You can also add other middleware registrations here
         $middleware->web(append: [
             // ... other middleware
+
         ]);
 
         $middleware->api(append: [

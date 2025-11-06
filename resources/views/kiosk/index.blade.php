@@ -6,9 +6,13 @@
 
 @section('actions')
 @if(!auth()->user()->isOnShift())
-<a href="{{ route('profile.start-shift') }}" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
-    <i class="fas fa-play mr-2"></i> Start Shift
-</a>
+  <form action="{{ route('profile.start-shift') }}" method="POST">
+                        @csrf
+                        <button type="submit" 
+                                class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700">
+                            <i class="fas fa-play mr-2"></i> Start Shift
+                        </button>
+                    </form>
 @else
 <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
     <i class="fas fa-circle animate-pulse mr-1"></i> On Shift
