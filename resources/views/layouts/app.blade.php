@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="light">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
@@ -14,7 +14,14 @@
 
     <!-- Styles -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    
+    <!-- Replace Tailwind CDN with one that supports dark mode -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+        }
+    </script>
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/alpinejs@3.12.0/dist/cdn.min.js" defer></script>
@@ -62,30 +69,48 @@
         }
 
         [x-cloak] { display: none !important; }
+
+        /* Ensure user input elements have black text in dark mode */
+        .dark input,
+        .dark textarea,
+        .dark select,
+        .dark [contenteditable="true"] {
+            color: #000000 !important;
+        }
+
+        .dark input::placeholder,
+        .dark textarea::placeholder {
+            color: #6b7280 !important;
+        }
     </style>
 
     @stack('styles')
 </head>
 
-<body class="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-    <!-- Theme Toggle Script -->
+<body class="bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100">
+    <!-- Theme initialization -->
     <script>
-        // Check for saved theme preference or default to 'light'
-        const currentTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.classList.add(currentTheme);
-        
-        // Update theme color meta tag
-        const themeColorMeta = document.getElementById('theme-color-meta');
-        if (currentTheme === 'dark') {
-            themeColorMeta.setAttribute('content', '#1f2937');
-        }
+        // Immediately set the theme on page load
+        (function() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            const html = document.documentElement;
+            const themeColorMeta = document.getElementById('theme-color-meta');
+            
+            if (savedTheme === 'dark') {
+                html.classList.add('dark');
+                themeColorMeta.setAttribute('content', '#1f2937');
+            } else {
+                html.classList.remove('dark');
+                themeColorMeta.setAttribute('content', '#3b82f6');
+            }
+        })();
     </script>
 
     <!-- Main Layout Container -->
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar -->
         <div x-data="{ sidebarOpen: false, sidebarCollapsed: false }" 
-             class="flex flex-col sidebar-transition bg-white dark:bg-gray-800 shadow-lg z-40 fixed lg:relative"
+             class="flex flex-col sidebar-transition bg-white shadow-lg z-40 fixed lg:relative dark:bg-gray-800"
              :class="sidebarCollapsed ? 'w-[var(--sidebar-collapsed-width)]' : 'w-[var(--sidebar-width)]'">
             
             <!-- Logo and Toggle -->
@@ -208,28 +233,28 @@
                          class="absolute bottom-full left-0 mb-2 w-full rounded-lg shadow-lg bg-white dark:bg-gray-800 ring-1 ring-black ring-opacity-5 focus:outline-none z-50">
                         <div class="py-1">
                             <a href="{{ route('profile.show') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <i class="fas fa-user mr-3 w-5 text-center"></i>
                                 <span>Profile</span>
                             </a>
                             <a href="{{ route('profile.edit') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <i class="fas fa-edit mr-3 w-5 text-center"></i>
                                 <span>Edit Profile</span>
                             </a>
                             <a href="{{ route('profile.password.edit') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <i class="fas fa-lock mr-3 w-5 text-center"></i>
                                 <span>Change Password</span>
                             </a>
                             <a href="{{ route('profile.activity') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <i class="fas fa-history mr-3 w-5 text-center"></i>
                                 <span>Activity Log</span>
                             </a>
                             @can('access kiosk')
                             <a href="{{ route('profile.shift-history') }}" 
-                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                               class="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <i class="fas fa-clock mr-3 w-5 text-center"></i>
                                 <span>Shift History</span>
                             </a>
@@ -238,7 +263,7 @@
                             <form method="POST" action="{{ route('logout') }}">
                                 @csrf
                                 <button type="submit" 
-                                        class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                        class="flex items-center w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-black hover:bg-gray-100 dark:hover:bg-gray-700">
                                     <i class="fas fa-sign-out-alt mr-3 w-5 text-center"></i>
                                     <span>Sign Out</span>
                                 </button>
@@ -254,7 +279,7 @@
              :class="sidebarCollapsed ? 'lg:ml-[var(--sidebar-collapsed-width)]' : 'lg:ml-[var(--sidebar-width)]'">
             
             <!-- Top Header -->
-            <header class="bg-white dark:bg-gray-800 shadow-sm z-30 border-b border-gray-200 dark:border-gray-700">
+            <header class="bg-white shadow-sm z-30 border-b border-gray-200 dark:bg-gray-800 dark:border-gray-700">
                 <div class="flex items-center justify-between h-[var(--header-height)] px-4 lg:px-6">
                     <!-- Mobile Menu Button -->
                     <button @click="sidebarOpen = true" class="lg:hidden text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200">
@@ -271,8 +296,7 @@
                     <div class="flex items-center space-x-3">
                         <!-- Theme Toggle -->
                         <button id="theme-toggle" class="p-2 rounded-lg text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200">
-                            <i class="fas fa-moon dark:hidden"></i>
-                            <i class="fas fa-sun hidden dark:block"></i>
+                            <i class="fas" id="theme-icon"></i>
                         </button>
 
                         <!-- Notifications -->
@@ -310,7 +334,7 @@
                 <!-- Flash Messages -->
                 @if (session('success'))
                 <div class="mb-6">
-                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center" role="alert">
+                    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg flex items-center dark:bg-green-900 dark:border-green-700 dark:text-green-300" role="alert">
                         <i class="fas fa-check-circle mr-2"></i>
                         <span>{{ session('success') }}</span>
                     </div>
@@ -319,7 +343,7 @@
 
                 @if (session('error'))
                 <div class="mb-6">
-                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center" role="alert">
+                    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg flex items-center dark:bg-red-900 dark:border-red-700 dark:text-red-300" role="alert">
                         <i class="fas fa-exclamation-circle mr-2"></i>
                         <span>{{ session('error') }}</span>
                     </div>
@@ -328,7 +352,7 @@
 
                 @if (session('warning'))
                 <div class="mb-6">
-                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg flex items-center" role="alert">
+                    <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded-lg flex items-center dark:bg-yellow-900 dark:border-yellow-700 dark:text-yellow-300" role="alert">
                         <i class="fas fa-exclamation-triangle mr-2"></i>
                         <span>{{ session('warning') }}</span>
                     </div>
@@ -340,7 +364,7 @@
             </main>
 
             <!-- Footer -->
-            <footer class="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 py-4 px-4 lg:px-6">
+            <footer class="bg-white border-t border-gray-200 dark:bg-gray-800 dark:border-gray-700 py-4 px-4 lg:px-6">
                 <div class="flex flex-col sm:flex-row justify-between items-center space-y-2 sm:space-y-0">
                     <p class="text-sm text-gray-500 dark:text-gray-400">
                         &copy; {{ date('Y') }} STU Key Management System. All rights reserved.
@@ -496,22 +520,46 @@
 
     <!-- Scripts -->
     <script>
-        // Theme toggle functionality
-        document.getElementById('theme-toggle').addEventListener('click', function() {
-            const html = document.documentElement;
+        // Theme toggle functionality - WORKING VERSION
+        document.addEventListener('DOMContentLoaded', function() {
+            const themeToggle = document.getElementById('theme-toggle');
+            const themeIcon = document.getElementById('theme-icon');
             const themeColorMeta = document.getElementById('theme-color-meta');
-            
-            if (html.classList.contains('dark')) {
-                html.classList.remove('dark');
-                html.classList.add('light');
-                themeColorMeta.setAttribute('content', '#3b82f6');
-                localStorage.setItem('theme', 'light');
-            } else {
-                html.classList.remove('light');
-                html.classList.add('dark');
-                themeColorMeta.setAttribute('content', '#1f2937');
-                localStorage.setItem('theme', 'dark');
+            const html = document.documentElement;
+
+            // Initialize theme icon
+            function updateThemeIcon() {
+                if (html.classList.contains('dark')) {
+                    themeIcon.className = 'fas fa-sun';
+                } else {
+                    themeIcon.className = 'fas fa-moon';
+                }
             }
+
+            // Theme toggle handler
+            themeToggle.addEventListener('click', function() {
+                const isDark = html.classList.contains('dark');
+                
+                if (isDark) {
+                    // Switch to light mode
+                    html.classList.remove('dark');
+                    themeColorMeta.setAttribute('content', '#3b82f6');
+                    localStorage.setItem('theme', 'light');
+                } else {
+                    // Switch to dark mode
+                    html.classList.add('dark');
+                    themeColorMeta.setAttribute('content', '#1f2937');
+                    localStorage.setItem('theme', 'dark');
+                }
+                
+                updateThemeIcon();
+                
+                // Debug log
+                console.log('Theme toggled to:', localStorage.getItem('theme'));
+            });
+
+            // Set initial icon
+            updateThemeIcon();
         });
 
         // PWA Service Worker Registration
@@ -530,10 +578,6 @@
         // Offline detection
         window.addEventListener('online', function() {
             document.documentElement.classList.remove('offline');
-            // Trigger sync if needed
-            if (typeof window.triggerSync === 'function') {
-                window.triggerSync();
-            }
         });
 
         window.addEventListener('offline', function() {
@@ -543,5 +587,4 @@
 
     @stack('scripts')
 </body>
-
 </html>

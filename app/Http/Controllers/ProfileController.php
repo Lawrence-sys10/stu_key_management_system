@@ -104,8 +104,11 @@ class ProfileController extends Controller
 
     public function activityLog()
     {
-        $activity = auth()->user()->keyLogsAsReceiver()
-            ->with(['key.location', 'holder'])
+        $user = auth()->user();
+        
+        // Use the safe method that doesn't load the holder relationship
+        $activity = $user->keyLogsAsReceiver()
+            ->with(['key.location', 'receiver']) // Only load safe relationships
             ->latest()
             ->paginate(20);
 

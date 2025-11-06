@@ -59,7 +59,42 @@ class KeyLog extends Model
 
     public function holder()
     {
-        return $this->morphTo();
+        return $this->morphTo('holder', 'holder_type', 'holder_id')
+            ->withDefault(function () {
+                return $this->getDefaultHolder();
+            });
+    }
+
+    /**
+     * Get a default holder object with the stored data
+     */
+    protected function getDefaultHolder()
+    {
+        return new class($this) {
+            protected $keyLog;
+
+            public function __construct(KeyLog $keyLog)
+            {
+                $this->keyLog = $keyLog;
+            }
+
+            public function __get($property)
+            {
+                // Return stored holder data when accessed
+                if ($property === 'name') {
+                    return $this->keyLog->holder_name ?? 'Unknown Holder';
+                }
+                if ($property === 'phone') {
+                    return $this->keyLog->holder_phone ?? 'N/A';
+                }
+                return null;
+            }
+
+            public function exists()
+            {
+                return false;
+            }
+        };
     }
 
     public function notifications()
@@ -190,5 +225,21 @@ class KeyLog extends Model
             'temp' => 'Temporary Staff',
             default => 'Unknown',
         };
+    }
+
+    /**
+     * Safe method to get holder name without triggering morph relationship errors
+     */
+    public function getHolderDisplayNameAttribute()
+    {
+        return $this->holder_name ?? 'Unknown Holder';
+    }
+
+    /**
+     * Safe method to get holder phone without triggering morph relationship errors
+     */
+    public function getHolderDisplayPhoneAttribute()
+    {
+        return $this->holder_phone ?? 'N/A';
     }
 }
