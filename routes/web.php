@@ -20,20 +20,23 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [AdminController::class, 'dashboard'])->name('dashboard');
     
-    // Profile Routes - FIXED: Corrected password route name
+    // Profile Routes
     Route::prefix('profile')->name('profile.')->group(function () {
         Route::get('/', [ProfileController::class, 'show'])->name('show');
         Route::get('/edit', [ProfileController::class, 'edit'])->name('edit');
         Route::put('/update', [ProfileController::class, 'update'])->name('update');
         
-        // Password routes - FIXED: Changed to consistent naming
+        // Password routes
         Route::get('/password', [ProfileController::class, 'editPassword'])->name('password.edit');
-        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update'); // Fixed: changed from 'update-password'
+        Route::put('/password', [ProfileController::class, 'updatePassword'])->name('password.update');
         
         Route::get('/activity', [ProfileController::class, 'activityLog'])->name('activity');
         Route::get('/shifts', [ProfileController::class, 'shiftHistory'])->name('shift-history');
         Route::post('/shift/start', [ProfileController::class, 'startShift'])->name('start-shift');
         Route::post('/shift/end', [ProfileController::class, 'endShift'])->name('end-shift');
+        
+        // Add profile deletion route
+        Route::delete('/', [ProfileController::class, 'destroy'])->name('destroy');
     });
 
     // Kiosk Routes
@@ -117,17 +120,20 @@ Route::middleware(['auth'])->group(function () {
         });
     });
 
-    // Report Routes
-    Route::prefix('reports')->name('reports.')->middleware(['role:admin|hr|auditor'])->group(function () {
+    // Report Routes - FIXED: Made key-activity accessible to security role
+    Route::prefix('reports')->name('reports.')->middleware(['role:admin|hr|auditor|security'])->group(function () {
         Route::get('/', [ReportController::class, 'index'])->name('index');
         Route::get('/analytics', [ReportController::class, 'analyticsDashboard'])->name('analytics');
+        
+        // Key Activity Route - FIXED: Made accessible to security role
         Route::get('/key-activity', [ReportController::class, 'keyActivity'])->name('key-activity');
+        
         Route::get('/current-holders', [ReportController::class, 'currentHolders'])->name('current-holders');
         Route::get('/overdue-keys', [ReportController::class, 'overdueKeys'])->name('overdue-keys');
         Route::get('/staff-activity', [ReportController::class, 'staffActivity'])->name('staff-activity');
         Route::get('/security-performance', [ReportController::class, 'securityPerformance'])->name('security-performance');
         
-        // NEW REPORT ROUTES
+        // Additional Report Routes
         Route::get('/location-usage', [ReportController::class, 'locationUsage'])->name('location-usage');
         Route::get('/holder-statistics', [ReportController::class, 'holderStatistics'])->name('holder-statistics');
         Route::get('/system-metrics', [ReportController::class, 'systemMetrics'])->name('system-metrics');
@@ -152,24 +158,60 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/system-health', [AdminController::class, 'systemHealth'])->name('system-health');
     });
     
-    // Debug routes
-    Route::get('/check-table', function() {
-        $columns = \DB::select('DESCRIBE key_logs');
-        dd($columns);
-    });
-    
-    Route::get('/debug-table', function() {
-        $columns = \DB::select('DESCRIBE key_logs');
-        echo "<h3>key_logs table structure:</h3>";
-        echo "<pre>";
-        print_r($columns);
-        echo "</pre>";
+    // Debug and Testing Routes
+    Route::middleware(['role:admin'])->group(function () {
+        Route::get('/check-table', function() {
+            try {
+                $columns = \DB::select('DESCRIBE key_logs');
+                $count = \DB::table('key_logs')->count();
+                
+                return response()->json([
+                    'table_exists' => true,
+                    'column_count' => count($columns),
+                    'row_count' => $count,
+                    'columns' => $columns
+                ]);
+            } catch (\Exception $e) {
+                return response()->json([
+                    'table_exists' => false,
+                    'error' => $e->getMessage()
+                ], 500);
+            }
+        });
         
-        $sampleData = \DB::table('key_logs')->limit(5)->get();
-        echo "<h3>Sample key_logs data:</h3>";
-        echo "<pre>";
-        print_r($sampleData->toArray());
-        echo "</pre>";
+        Route::get('/debug-table', function() {
+            $columns = \DB::select('DESCRIBE key_logs');
+            echo "<h3>key_logs table structure:</h3>";
+            echo "<pre>";
+            print_r($columns);
+            echo "</pre>";
+            
+            $sampleData = \DB::table('key_logs')
+                ->leftJoin('keys', 'key_logs.key_id', '=', 'keys.id')
+                ->leftJoin('users', 'key_logs.receiver_user_id', '=', 'users.id')
+                ->select('key_logs.*', 'keys.label as key_label', 'keys.code as key_code', 'users.name as receiver_name')
+                ->limit(5)
+                ->get();
+                
+            echo "<h3>Sample key_logs data with joins:</h3>";
+            echo "<pre>";
+            print_r($sampleData->toArray());
+            echo "</pre>";
+            
+            // Test the key activity query
+            $testQuery = \App\Models\KeyLog::with(['key.location', 'receiver'])
+                ->whereDate('created_at', '>=', now()->subDays(7))
+                ->orderBy('created_at', 'desc')
+                ->limit(5)
+                ->get();
+                
+            echo "<h3>Eloquent query test:</h3>";
+            echo "<pre>";
+            print_r($testQuery->toArray());
+            echo "</pre>";
+        });
+        
+        Route::get('/test-key-activity', [ReportController::class, 'keyActivity'])->name('test-key-activity');
     });
     
     Route::get('/test-profile-edit', function() {
@@ -186,10 +228,29 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/email/verification-notification', function () {
         return redirect()->back()->with('status', 'Verification link sent!');
     })->middleware(['auth'])->name('verification.send');
-    
-    Route::delete('/profile', [ProfileController::class, 'destroy'])
-        ->middleware('auth')
-        ->name('profile.destroy');
 });
 
 Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
+
+// Test route for key activity without auth (for debugging)
+Route::get('/test-key-logs', function() {
+    try {
+        $logs = \App\Models\KeyLog::with(['key.location', 'receiver'])
+            ->orderBy('created_at', 'desc')
+            ->limit(10)
+            ->get();
+            
+        return response()->json([
+            'success' => true,
+            'total_logs' => \App\Models\KeyLog::count(),
+            'sample_data' => $logs,
+            'sample_count' => $logs->count()
+        ]);
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage(),
+            'trace' => $e->getTraceAsString()
+        ], 500);
+    }
+});

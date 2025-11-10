@@ -26,7 +26,7 @@
                 font-family: 'Figtree', sans-serif;
                 min-height: 100vh;
                 display: flex;
-                align-items: center;
+                align-items: center; 
             }
             .auth-container {
                 background: rgba(255, 255, 255, 0.95);

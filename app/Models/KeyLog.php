@@ -36,6 +36,14 @@ class KeyLog extends Model
         'updated_at' => 'datetime',
     ];
 
+    protected $appends = [
+        'signature_url',
+        'photo_url',
+        'holder_display_name',
+        'holder_display_phone',
+        'holder_type_label',
+    ];
+
     // Relationships
     public function key()
     {
@@ -59,10 +67,16 @@ class KeyLog extends Model
 
     public function holder()
     {
-        return $this->morphTo('holder', 'holder_type', 'holder_id')
-            ->withDefault(function () {
-                return $this->getDefaultHolder();
-            });
+        // Only attempt morph relationship if holder_type and holder_id are set
+        if ($this->holder_type && $this->holder_id) {
+            return $this->morphTo('holder', 'holder_type', 'holder_id')
+                ->withDefault(function () {
+                    return $this->getDefaultHolder();
+                });
+        }
+        
+        // Return default holder if morph relationship is not available
+        return $this->getDefaultHolder();
     }
 
     /**
@@ -87,12 +101,20 @@ class KeyLog extends Model
                 if ($property === 'phone') {
                     return $this->keyLog->holder_phone ?? 'N/A';
                 }
+                if ($property === 'email') {
+                    return $this->keyLog->holder_email ?? 'N/A';
+                }
                 return null;
             }
 
             public function exists()
             {
                 return false;
+            }
+            
+            public function getAttribute($key)
+            {
+                return $this->__get($key);
             }
         };
     }
@@ -138,6 +160,7 @@ class KeyLog extends Model
     {
         return $query->where('action', 'checkout')
                     ->whereNull('returned_from_log_id')
+                    ->whereNotNull('expected_return_at')
                     ->where('expected_return_at', '<', now());
     }
 
@@ -149,6 +172,11 @@ class KeyLog extends Model
     public function scopeForReceiver($query, $userId)
     {
         return $query->where('receiver_user_id', $userId);
+    }
+
+    public function scopeRecent($query, $days = 7)
+    {
+        return $query->where('created_at', '>=', now()->subDays($days));
     }
 
     // Methods
@@ -187,14 +215,44 @@ class KeyLog extends Model
         return null;
     }
 
+    public function getDurationInHours()
+    {
+        $minutes = $this->getDurationInMinutes();
+        return $minutes ? round($minutes / 60, 2) : null;
+    }
+
     public function getSignatureUrlAttribute()
     {
-        return $this->signature_path ? asset('storage/' . $this->signature_path) : null;
+        if (!$this->signature_path) {
+            return null;
+        }
+        
+        if (filter_var($this->signature_path, FILTER_VALIDATE_URL)) {
+            return $this->signature_path;
+        }
+        
+        if (str_starts_with($this->signature_path, 'storage/')) {
+            return asset($this->signature_path);
+        }
+        
+        return asset('storage/' . $this->signature_path);
     }
 
     public function getPhotoUrlAttribute()
     {
-        return $this->photo_path ? asset('storage/' . $this->photo_path) : null;
+        if (!$this->photo_path) {
+            return null;
+        }
+        
+        if (filter_var($this->photo_path, FILTER_VALIDATE_URL)) {
+            return $this->photo_path;
+        }
+        
+        if (str_starts_with($this->photo_path, 'storage/')) {
+            return asset($this->photo_path);
+        }
+        
+        return asset('storage/' . $this->photo_path);
     }
 
     public function markAsVerified()
@@ -223,7 +281,11 @@ class KeyLog extends Model
             'hr' => 'HR Staff',
             'perm_manual' => 'Permanent Staff (Manual)',
             'temp' => 'Temporary Staff',
-            default => 'Unknown',
+            'student' => 'Student',
+            'staff' => 'Staff',
+            'visitor' => 'Visitor',
+            'contractor' => 'Contractor',
+            default => ucfirst(str_replace('_', ' ', $this->holder_type)) ?: 'Unknown',
         };
     }
 
@@ -241,5 +303,74 @@ class KeyLog extends Model
     public function getHolderDisplayPhoneAttribute()
     {
         return $this->holder_phone ?? 'N/A';
+    }
+
+    /**
+     * Get the action with badge HTML for display
+     */
+    public function getActionBadgeAttribute()
+    {
+        if ($this->isCheckout()) {
+            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                <i class="fas fa-arrow-right mr-1"></i> Checkout
+            </span>';
+        } else {
+            return '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                <i class="fas fa-arrow-left mr-1"></i> Checkin
+            </span>';
+        }
+    }
+
+    /**
+     * Check if this log can be checked in
+     */
+    public function canBeCheckedIn()
+    {
+        return $this->isCheckout() && $this->isOpenCheckout();
+    }
+
+    /**
+     * Get related checkout log for a checkin
+     */
+    public function getRelatedCheckoutLog()
+    {
+        if ($this->isCheckin()) {
+            return $this->returnedFromLog;
+        }
+        
+        return null;
+    }
+
+    /**
+     * Get the status of the key log
+     */
+    public function getStatusAttribute()
+    {
+        if ($this->isCheckin()) {
+            return 'returned';
+        }
+        
+        if ($this->isOverdue()) {
+            return 'overdue';
+        }
+        
+        if ($this->isOpenCheckout()) {
+            return 'checked_out';
+        }
+        
+        return 'unknown';
+    }
+
+    /**
+     * Get status badge for display
+     */
+    public function getStatusBadgeAttribute()
+    {
+        return match($this->status) {
+            'checked_out' => '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">Checked Out</span>',
+            'returned' => '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">Returned</span>',
+            'overdue' => '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Overdue</span>',
+            default => '<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">Unknown</span>',
+        };
     }
 }
