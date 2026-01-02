@@ -45,7 +45,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Checked Out</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Collected</dt>
                         <dd class="text-lg font-medium text-gray-900">{{ $stats['checked_out_keys'] }}</dd>
                     </dl>
                 </div>
@@ -94,7 +94,7 @@
                                 <div>
                                     <p class="text-sm text-gray-500">
                                         Key <span class="font-medium text-gray-900">{{ $activity->key->label }}</span>
-                                        was {{ $activity->action === 'checkout' ? 'checked out' : 'checked in' }}
+                                        was {{ $activity->action === 'checkout' ? 'collected' : 'returned' }}
                                         by <span class="font-medium">{{ $activity->holder_name }}</span>
                                     </p>
                                     <p class="text-xs text-gray-400">

@@ -2,7 +2,7 @@
 
 @section('title', 'Current Key Holders Report')
 
-@section('subtitle', 'View all currently checked out keys and their holders')
+@section('subtitle', 'View all currently collected keys and their holders')
 
 @section('content')
 <div class="bg-white shadow rounded-lg">
@@ -130,7 +130,7 @@
                     <tr>
                         <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
                             <i class="fas fa-key text-3xl text-gray-300 mb-2 block"></i>
-                            No keys are currently checked out.
+                            No keys are currently collected.
                             <p class="text-sm text-gray-400 mt-1">All keys are available in the system.</p>
                         </td>
                     </tr>
@@ -157,7 +157,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Total Checked Out</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Total Collected</dt>
                         <dd class="text-lg font-medium text-gray-900">{{ $currentHolders->total() }}</dd>
                     </dl>
                 </div>

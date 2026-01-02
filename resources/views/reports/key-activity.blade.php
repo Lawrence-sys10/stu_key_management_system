@@ -8,18 +8,16 @@
 <div class="bg-white shadow rounded-lg">
     <!-- Filters -->
     <div class="px-4 py-5 sm:p-6 border-b border-gray-200">
-        <form method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <form method="GET" action="{{ route('reports.key-activity') }}" class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label for="start_date" class="block text-sm font-medium text-gray-700">Start Date</label>
                 <input type="date" name="start_date" id="start_date" value="{{ $filters['start_date'] ?? '' }}" 
-                       class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                       required>
+                       class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div>
                 <label for="end_date" class="block text-sm font-medium text-gray-700">End Date</label>
                 <input type="date" name="end_date" id="end_date" value="{{ $filters['end_date'] ?? '' }}" 
-                       class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                       required>
+                       class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
             </div>
             <div>
                 <label for="action" class="block text-sm font-medium text-gray-700">Action Type</label>
@@ -30,15 +28,31 @@
                 </select>
             </div>
             <div class="flex items-end space-x-2">
-                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700">
+                <button type="submit" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     <i class="fas fa-filter mr-2"></i> Filter
                 </button>
-                <a href="{{ route('reports.key-activity') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50">
+                <a href="{{ route('reports.key-activity') }}" class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
                     <i class="fas fa-refresh mr-2"></i> Reset
                 </a>
             </div>
         </form>
     </div>
+
+    <!-- Debug Info (remove in production) -->
+    @if(isset($debug))
+    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
+        <div class="flex">
+            <div class="ml-3">
+                <p class="text-sm text-yellow-700">
+                    <strong>Debug Info:</strong> 
+                    Logs count: {{ $logs->count() }}, 
+                    Total: {{ $logs->total() }},
+                    Filters: {{ json_encode($filters ?? []) }}
+                </p>
+            </div>
+        </div>
+    </div>
+    @endif
 
     <!-- Activity Table -->
     <div class="overflow-x-auto">
@@ -64,7 +78,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @forelse($logs as $log)
-                    <tr class="hover:bg-gray-50">
+                    <tr class="hover:bg-gray-50 transition-colors duration-150">
                         <td class="px-6 py-4 whitespace-nowrap">
                             <div class="text-sm text-gray-900">{{ $log->created_at->format('M j, Y') }}</div>
                             <div class="text-sm text-gray-500">{{ $log->created_at->format('g:i A') }}</div>
@@ -81,24 +95,34 @@
                             @endif
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm font-medium text-gray-900">{{ $log->key->label }}</div>
-                            <div class="text-sm text-gray-500">{{ $log->key->code }}</div>
-                            <div class="text-xs text-gray-400">{{ $log->key->location->name }}</div>
+                            <div class="text-sm font-medium text-gray-900">{{ $log->key->label ?? 'N/A' }}</div>
+                            <div class="text-sm text-gray-500">{{ $log->key->code ?? 'N/A' }}</div>
+                            <div class="text-xs text-gray-400">{{ $log->key->location->name ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $log->holder_name }}</div>
+                            <div class="text-sm text-gray-900">{{ $log->holder_name ?? 'N/A' }}</div>
                             <div class="text-sm text-gray-500">{{ $log->holder_phone ?? 'No phone' }}</div>
-                            <div class="text-xs text-gray-400 capitalize">{{ $log->holder_type }}</div>
+                            <div class="text-xs text-gray-400 capitalize">{{ $log->holder_type ?? 'N/A' }}</div>
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <div class="text-sm text-gray-900">{{ $log->receiver_name }}</div>
+                            <div class="text-sm text-gray-900">{{ $log->receiver_name ?? 'N/A' }}</div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">
-                            <i class="fas fa-search text-3xl text-gray-300 mb-2 block"></i>
-                            No activity found for the selected filters.
+                        <td colspan="5" class="px-6 py-8 text-center">
+                            <div class="flex flex-col items-center justify-center">
+                                <i class="fas fa-search text-4xl text-gray-300 mb-3"></i>
+                                <p class="text-sm text-gray-500 font-medium">No activity found for the selected filters.</p>
+                                <p class="text-xs text-gray-400 mt-1">Try adjusting your date range or filters</p>
+                                @if(isset($filters))
+                                    <p class="text-xs text-gray-400 mt-1">Current filters: 
+                                        {{ $filters['start_date'] ?? 'No start date' }} to 
+                                        {{ $filters['end_date'] ?? 'No end date' }}
+                                        {{ isset($filters['action']) ? " - Action: {$filters['action']}" : '' }}
+                                    </p>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @endforelse
@@ -109,8 +133,62 @@
     <!-- Pagination -->
     @if($logs->hasPages())
         <div class="px-4 py-4 border-t border-gray-200 sm:px-6">
-            {{ $logs->links() }}
+            {{ $logs->withQueryString()->links() }}
         </div>
     @endif
 </div>
+
+<!-- JavaScript for form validation and better UX -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form');
+    const startDate = document.getElementById('start_date');
+    const endDate = document.getElementById('end_date');
+    
+    // Set default dates if not set
+    if (!startDate.value) {
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        startDate.value = oneWeekAgo.toISOString().split('T')[0];
+    }
+    
+    if (!endDate.value) {
+        const today = new Date();
+        endDate.value = today.toISOString().split('T')[0];
+    }
+    
+    // Form validation
+    form.addEventListener('submit', function(e) {
+        if (!startDate.value || !endDate.value) {
+            e.preventDefault();
+            alert('Please select both start and end dates.');
+            return false;
+        }
+        
+        if (new Date(startDate.value) > new Date(endDate.value)) {
+            e.preventDefault();
+            alert('Start date cannot be after end date.');
+            return false;
+        }
+    });
+    
+    // Set max date for end date based on start date
+    startDate.addEventListener('change', function() {
+        endDate.min = this.value;
+    });
+    
+    // Set min date for start date based on end date
+    endDate.addEventListener('change', function() {
+        startDate.max = this.value;
+    });
+    
+    // Initialize date constraints
+    if (startDate.value) {
+        endDate.min = startDate.value;
+    }
+    if (endDate.value) {
+        startDate.max = endDate.value;
+    }
+});
+</script>
 @endsection

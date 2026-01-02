@@ -19,43 +19,39 @@ class ReportController extends Controller
 
     public function keyActivity(Request $request)
     {
-        $filters = $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'key_id' => 'nullable|exists:keys,id',
-            'location_id' => 'nullable|exists:locations,id',
-            'receiver_id' => 'nullable|exists:users,id',
-            'action' => 'nullable|in:checkout,checkin',
-        ]);
-
-        $query = KeyLog::with(['key.location', 'receiver', 'holder'])
-            ->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
-
-        if (!empty($filters['key_id'])) {
-            $query->where('key_id', $filters['key_id']);
+        // Set default date range (last 7 days)
+        $defaultStartDate = now()->subDays(7)->format('Y-m-d');
+        $defaultEndDate = now()->format('Y-m-d');
+        
+        // Get filters from request or use defaults
+        $filters = [
+            'start_date' => $request->get('start_date', $defaultStartDate),
+            'end_date' => $request->get('end_date', $defaultEndDate),
+            'action' => $request->get('action', '')
+        ];
+        
+        // Build query
+        $query = KeyLog::with(['key.location', 'receiver'])
+            ->orderBy('created_at', 'desc');
+        
+        // Apply date filters
+        if (!empty($filters['start_date'])) {
+            $query->whereDate('created_at', '>=', $filters['start_date']);
         }
-
-        if (!empty($filters['location_id'])) {
-            $query->whereHas('key', function ($q) use ($filters) {
-                $q->where('location_id', $filters['location_id']);
-            });
+        
+        if (!empty($filters['end_date'])) {
+            $query->whereDate('created_at', '<=', $filters['end_date']);
         }
-
-        if (!empty($filters['receiver_id'])) {
-            $query->where('receiver_user_id', $filters['receiver_id']);
-        }
-
+        
+        // Apply action filter
         if (!empty($filters['action'])) {
             $query->where('action', $filters['action']);
         }
-
-        $logs = $query->latest()->paginate(50);
-
-        $keys = Key::all();
-        $locations = Location::all();
-        $receivers = User::role('security')->get();
-
-        return view('reports.key-activity', compact('logs', 'filters', 'keys', 'locations', 'receivers'));
+        
+        // Get paginated results
+        $logs = $query->paginate(25);
+        
+        return view('reports.key-activity', compact('logs', 'filters'));
     }
 
     public function currentHolders(Request $request)
@@ -120,58 +116,81 @@ class ReportController extends Controller
 
     public function staffActivity(Request $request)
     {
-        $filters = $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-            'staff_type' => 'nullable|in:hr,perm_manual,temp',
-        ]);
+        // Set default date range (last 30 days)
+        $defaultStartDate = now()->subDays(30)->format('Y-m-d');
+        $defaultEndDate = now()->format('Y-m-d');
+        
+        // Get filters from request or use defaults
+        $filters = [
+            'start_date' => $request->get('start_date', $defaultStartDate),
+            'end_date' => $request->get('end_date', $defaultEndDate),
+            'staff_type' => $request->get('staff_type', '')
+        ];
+        
+        // Build query for staff activity (only checkouts)
+        $query = KeyLog::where('action', 'checkout')
+            ->whereDate('created_at', '>=', $filters['start_date'])
+            ->whereDate('created_at', '<=', $filters['end_date']);
 
-        $query = KeyLog::with(['key.location', 'receiver'])
-            ->whereBetween('created_at', [$filters['start_date'], $filters['end_date']])
-            ->where('action', 'checkout');
-
+        // Apply staff type filter
         if (!empty($filters['staff_type'])) {
             $query->where('holder_type', $filters['staff_type']);
         }
 
+        // Get staff activity with aggregated data
         $staffActivity = $query->select(
                 'holder_type',
                 'holder_id',
                 'holder_name',
                 'holder_phone',
                 DB::raw('COUNT(*) as total_checkouts'),
-                DB::raw('AVG(TIMESTAMPDIFF(MINUTE, created_at, 
-                    (SELECT created_at FROM key_logs AS k2 
-                     WHERE k2.returned_from_log_id = key_logs.id)
-                )) as avg_duration_minutes')
+                DB::raw('AVG(
+                    CASE WHEN returned_from_log_id IS NOT NULL THEN 
+                        TIMESTAMPDIFF(MINUTE, created_at, 
+                            (SELECT created_at FROM key_logs AS k2 
+                             WHERE k2.id = key_logs.returned_from_log_id)
+                        )
+                    ELSE NULL
+                    END
+                ) as avg_duration_minutes')
             )
             ->groupBy('holder_type', 'holder_id', 'holder_name', 'holder_phone')
             ->orderBy('total_checkouts', 'desc')
-            ->paginate(50);
+            ->paginate(25);
 
         return view('reports.staff-activity', compact('staffActivity', 'filters'));
     }
 
     public function securityPerformance(Request $request)
     {
-        $filters = $request->validate([
-            'start_date' => 'required|date',
-            'end_date' => 'required|date|after_or_equal:start_date',
-        ]);
+        // Set default date range (last 30 days)
+        $defaultStartDate = now()->subDays(30)->format('Y-m-d');
+        $defaultEndDate = now()->format('Y-m-d');
+        
+        // Get filters from request or use defaults
+        $filters = [
+            'start_date' => $request->get('start_date', $defaultStartDate),
+            'end_date' => $request->get('end_date', $defaultEndDate)
+        ];
+        
+        // Build query for security performance
+        $query = User::role('security');
 
-        $performance = User::role('security')
-            ->withCount(['keyLogsAsReceiver as total_transactions' => function($query) use ($filters) {
-                $query->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
+        // Apply date filters to the relationship counts
+        $performance = $query->withCount(['keyLogsAsReceiver as total_transactions' => function($query) use ($filters) {
+                $query->whereDate('created_at', '>=', $filters['start_date'])
+                      ->whereDate('created_at', '<=', $filters['end_date']);
             }])
             ->withCount(['keyLogsAsReceiver as checkout_count' => function($query) use ($filters) {
                 $query->where('action', 'checkout')
-                      ->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
+                      ->whereDate('created_at', '>=', $filters['start_date'])
+                      ->whereDate('created_at', '<=', $filters['end_date']);
             }])
             ->withCount(['keyLogsAsReceiver as checkin_count' => function($query) use ($filters) {
                 $query->where('action', 'checkin')
-                      ->whereBetween('created_at', [$filters['start_date'], $filters['end_date']]);
+                      ->whereDate('created_at', '>=', $filters['start_date'])
+                      ->whereDate('created_at', '<=', $filters['end_date']);
             }])
-            ->having('total_transactions', '>', 0)
             ->orderBy('total_transactions', 'desc')
             ->paginate(20);
 

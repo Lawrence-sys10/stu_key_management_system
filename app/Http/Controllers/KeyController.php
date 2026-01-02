@@ -19,10 +19,10 @@ class KeyController extends Controller
         $locations = Location::active()->get();
 
         $keys = Key::with([
-                'location', 
-                'keyTags', 
-                'currentHolder' // This will load the KeyLog relationship
-            ])
+            'location',
+            'keyTags',
+            'currentHolder' // This will load the KeyLog relationship
+        ])
             ->latest()
             ->paginate(20);
 
@@ -72,12 +72,12 @@ class KeyController extends Controller
     {
         // FIXED: Use proper eager loading and accessor
         $key->load([
-            'location', 
-            'keyTags', 
-            'keyLogs.receiver', 
+            'location',
+            'keyTags',
+            'keyLogs.receiver',
             'lastLog'
         ]);
-        
+
         // FIXED: Use the accessor instead of direct relationship
         $currentLog = $key->current_holder;
         $history = $key->keyLogs()
@@ -138,14 +138,19 @@ class KeyController extends Controller
     public function printTags(Key $key)
     {
         $tags = $key->keyTags()->active()->get();
-        
+
         if ($tags->isEmpty()) {
-            return redirect()->back()->with('error', 'No active QR tags found for this key.');
+            return redirect()->back()->with('error', 'No active QR tags found for this key.')
+                ->with('showGenerateTags', true); // Add this to show generate tags prompt
+        }
+
+        // Check if we're in print preview mode
+        if (request()->has('preview')) {
+            return view('keys.print-tags', compact('key', 'tags'));
         }
 
         return view('keys.print-tags', compact('key', 'tags'));
     }
-
     private function generateKeyTags(Key $key, $count = 1)
     {
         for ($i = 0; $i < $count; $i++) {
@@ -156,7 +161,18 @@ class KeyController extends Controller
             ]);
         }
     }
+    public function scan($uuid)
+    {
+        $tag = KeyTag::where('uuid', $uuid)->with('key')->firstOrFail();
 
+        if (!$tag->is_active) {
+            return redirect()->route('keys.show', $tag->key_id)
+                ->with('error', 'This QR tag has been deactivated.');
+        }
+
+        return redirect()->route('keys.show', $tag->key_id)
+            ->with('info', 'QR code scanned successfully.');
+    }
     public function markAsLost(Key $key)
     {
         if (!$key->isCheckedOut()) {
@@ -165,7 +181,7 @@ class KeyController extends Controller
 
         // FIXED: Use the accessor instead of direct relationship
         $currentHolder = $key->current_holder;
-        
+
         if (!$currentHolder) {
             return redirect()->back()->with('error', 'Unable to find current checkout record for this key.');
         }
@@ -231,7 +247,6 @@ class KeyController extends Controller
 
             return redirect()->route('keys.show', $key)
                 ->with('success', 'Key checked out successfully.');
-
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error during checkout: ' . $e->getMessage());
         }
@@ -264,7 +279,6 @@ class KeyController extends Controller
 
             return redirect()->route('keys.show', $key)
                 ->with('success', 'Key checked in successfully.');
-
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Error during checkin: ' . $e->getMessage());
         }

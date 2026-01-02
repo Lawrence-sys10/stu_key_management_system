@@ -76,7 +76,7 @@
             </div>
             <div class="mt-6">
                 <a href="{{ route('keys.index') }}?status=checked_out" class="w-full inline-flex justify-center items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-orange-600 hover:bg-orange-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
-                    <i class="fas fa-undo mr-2"></i> Browse Checked Out Keys
+                    <i class="fas fa-undo mr-2"></i> Browse Collected Keys
                 </a>
             </div>
         </div>
@@ -107,7 +107,7 @@
                             <div>
                                 <p class="text-sm text-gray-500">
                                     Key <span class="font-medium text-gray-900">{{ $activity->key->label }}</span>
-                                    was {{ $activity->action === 'checkout' ? 'checked out' : 'checked in' }}
+                                    was {{ $activity->action === 'checkout' ? 'collected' : 'returned' }}
                                     by <span class="font-medium">{{ $activity->holder_name }}</span>
                                 </p>
                                 <p class="text-xs text-gray-400">

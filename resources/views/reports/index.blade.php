@@ -36,7 +36,7 @@
                 </div>
                 <div class="ml-4">
                     <h3 class="text-lg font-medium text-gray-900">Current Holders</h3>
-                    <p class="text-sm text-gray-500">Currently checked out keys and holders</p>
+                    <p class="text-sm text-gray-500">Currently collected keys and holders</p>
                 </div>
             </div>
             <div class="mt-6">

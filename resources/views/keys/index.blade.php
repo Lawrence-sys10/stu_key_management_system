@@ -28,7 +28,7 @@
                 <select name="status" id="status" class="mt-1 block w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
                     <option value="">All Statuses</option>
                     <option value="available" {{ request('status') == 'available' ? 'selected' : '' }}>Available</option>
-                    <option value="checked_out" {{ request('status') == 'checked_out' ? 'selected' : '' }}>Checked Out</option>
+                    <option value="checked_out" {{ request('status') == 'checked_out' ? 'selected' : '' }}>Collected</option>
                     <option value="lost" {{ request('status') == 'lost' ? 'selected' : '' }}>Lost</option>
                     <option value="maintenance" {{ request('status') == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
                 </select>
@@ -231,7 +231,7 @@
                 </div>
                 <div class="ml-5 w-0 flex-1">
                     <dl>
-                        <dt class="text-sm font-medium text-gray-500 truncate">Checked Out</dt>
+                        <dt class="text-sm font-medium text-gray-500 truncate">Collected</dt>
                         <dd class="text-lg font-medium text-gray-900">
                             {{ $keys->where('status', 'checked_out')->count() }}
                         </dd>

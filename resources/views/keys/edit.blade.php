@@ -103,7 +103,7 @@
                                     required>
                                 <option value="">Select Status</option>
                                 <option value="available" {{ old('status', $key->status) == 'available' ? 'selected' : '' }}>Available</option>
-                                <option value="checked_out" {{ old('status', $key->status) == 'checked_out' ? 'selected' : '' }}>Checked Out</option>
+                                <option value="checked_out" {{ old('status', $key->status) == 'checked_out' ? 'selected' : '' }}>Collected</option>
                                 <option value="lost" {{ old('status', $key->status) == 'lost' ? 'selected' : '' }}>Lost</option>
                                 <option value="maintenance" {{ old('status', $key->status) == 'maintenance' ? 'selected' : '' }}>Maintenance</option>
                             </select>
@@ -121,9 +121,9 @@
                                 <i class="fas fa-exclamation-triangle text-yellow-400"></i>
                             </div>
                             <div class="ml-3">
-                                <h3 class="text-sm font-medium text-yellow-800">Key is Currently Checked Out</h3>
+                                <h3 class="text-sm font-medium text-yellow-800">Key is Currently Collected</h3>
                                 <div class="mt-2 text-sm text-yellow-700">
-                                    <p>This key is currently checked out. Changing the status to "Available" will not automatically check it in.</p>
+                                    <p>This key is currently Collected. Changing the status to "Available" will not automatically check it in.</p>
                                 </div>
                             </div>
                         </div>
@@ -159,10 +159,10 @@
                     <button type="button" 
                             class="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white opacity-50 cursor-not-allowed"
                             disabled
-                            title="Cannot delete a key that is checked out">
+                            title="Cannot delete a key that is collected">
                         <i class="fas fa-trash mr-2"></i> Delete Key
                     </button>
-                    <p class="mt-1 text-sm text-gray-500">Cannot delete a key that is currently checked out.</p>
+                    <p class="mt-1 text-sm text-gray-500">Cannot delete a key that is currently Collected.</p>
                 @else
                     <form action="{{ route('keys.destroy', $key) }}" method="POST" class="inline" onsubmit="return confirm('Are you sure you want to delete this key? This action cannot be undone.')">
                         @csrf

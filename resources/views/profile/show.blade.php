@@ -90,7 +90,7 @@
                                     <div>
                                         <p class="text-sm text-gray-500">
                                             Key <span class="font-medium text-gray-900">{{ $activity->key->label }}</span>
-                                            was {{ $activity->action === 'checkout' ? 'checked out' : 'checked in' }}
+                                            was {{ $activity->action === 'checkout' ? 'collected' : 'returned' }}
                                             by <span class="font-medium">{{ $activity->holder_name }}</span>
                                         </p>
                                         <p class="text-xs text-gray-400 mt-1">

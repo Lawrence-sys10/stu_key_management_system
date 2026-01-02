@@ -107,7 +107,7 @@
                     </div>
                     
                     <div>
-                        <label class="text-sm font-medium text-gray-500">Checked Out</label>
+                        <label class="text-sm font-medium text-gray-500">Collected</label>
                         <p class="mt-1 text-sm text-gray-900">{{ $currentLog->created_at->format('M j, Y g:i A') }}</p>
                         <p class="text-sm text-gray-500">({{ $currentLog->created_at->diffForHumans() }})</p>
                     </div>
@@ -216,10 +216,10 @@
                                             <div>
                                                 <p class="text-sm text-gray-700">
                                                     @if($log->action === 'checkout')
-                                                        Key checked out to 
+                                                        Key Collected by 
                                                         <span class="font-medium">{{ $log->holder_name }}</span>
                                                     @elseif($log->action === 'checkin')
-                                                        Key checked in from 
+                                                        Key Returned by  
                                                         <span class="font-medium">{{ $log->holder_name }}</span>
                                                     @elseif($log->action === 'lost')
                                                         Key marked as lost from 

@@ -163,7 +163,7 @@
                     </span>
                 </div>
                 <div class="flex justify-between items-center">
-                    <span class="text-sm text-gray-600 dark:text-gray-400">Checked Out</span>
+                    <span class="text-sm text-gray-600 dark:text-gray-400">Collected</span>
                     <span class="text-lg font-semibold text-yellow-600 dark:text-yellow-400">
                         {{ $location->keys->where('status', 'checked_out')->count() }}
                     </span>

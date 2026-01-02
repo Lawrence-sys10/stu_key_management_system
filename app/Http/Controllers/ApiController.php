@@ -6,8 +6,11 @@ use App\Models\Key;
 use App\Models\KeyTag;
 use App\Models\HrStaff;
 use App\Models\KeyLog;
+use App\Helpers\IrmtsHelper;
+use App\Services\HrSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 
 class ApiController extends Controller
 {
@@ -76,9 +79,9 @@ class ApiController extends Controller
 
         $cacheKey = 'staff_search_' . md5($search);
         $results = Cache::remember($cacheKey, 300, function () use ($search) {
-            $results = [];
+            $results = collect();
 
-            // Search HR Staff
+            // Search HR Staff (local database)
             $hrStaff = HrStaff::active()
                 ->search($search)
                 ->limit(5)
@@ -93,10 +96,58 @@ class ApiController extends Controller
                         'dept' => $staff->dept,
                         'staff_id' => $staff->staff_id,
                         'verified' => true,
+                        'source' => 'local',
                     ];
                 });
 
-            $results = $hrStaff->merge($results);
+            $results = $results->merge($hrStaff);
+
+            // If local search didn't find enough results, check IRMTS API
+            if ($results->count() < 5) {
+                try {
+                    $irmtsData = IrmtsHelper::lookup($search, 'staff');
+                    
+                    if ($irmtsData) {
+                        $staffType = 'hr';
+                        $typeLabel = 'HR Staff';
+                        
+                        if (isset($irmtsData['staff_type']) && $irmtsData['staff_type'] === 'part_time') {
+                            $staffType = 'part_time';
+                            $typeLabel = 'Part-Time Staff';
+                        }
+                        
+                        // Check if already in results
+                        $exists = $results->first(function ($item) use ($irmtsData) {
+                            return isset($item['staff_id']) && 
+                                   $item['staff_id'] === ($irmtsData['staff_id'] ?? null);
+                        });
+                        
+                        if (!$exists) {
+                            // Optionally sync to local database for future lookups
+                            $hrSyncService = app(HrSyncService::class);
+                            $syncedStaff = $hrSyncService->syncStaffFromIrmts($irmtsData);
+                            
+                            $results->push([
+                                'id' => $syncedStaff ? $syncedStaff->id : null,
+                                'name' => $irmtsData['name'] ?? 'Unknown',
+                                'phone' => $irmtsData['phone'] ?? '',
+                                'type' => $staffType,
+                                'type_label' => $typeLabel,
+                                'dept' => $irmtsData['department'] ?? 'N/A',
+                                'staff_id' => $irmtsData['staff_id'] ?? $search,
+                                'email' => $irmtsData['email'] ?? null,
+                                'verified' => true,
+                                'source' => $syncedStaff ? 'irmts_synced' : 'irmts',
+                            ]);
+                        }
+                    }
+                } catch (\Exception $e) {
+                    Log::warning('IRMTS lookup failed in API search', [
+                        'search' => $search,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
 
             return $results->values();
         });

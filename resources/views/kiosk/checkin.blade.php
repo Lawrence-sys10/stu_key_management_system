@@ -31,7 +31,7 @@
 
             <!-- Current Holder Information -->
             <div class="mb-8 p-6 bg-orange-50 rounded-lg">
-                <h3 class="text-lg font-medium text-orange-900 mb-4">Current Holder</h3>
+                <h3 class="text-lg font-medium text-orange-900 mb-4">Currently Checked Out To</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <p class="font-medium text-orange-800">Name</p>
@@ -42,7 +42,7 @@
                         <p class="text-orange-700">{{ $currentCheckout->holder_phone }}</p>
                     </div>
                     <div>
-                        <p class="font-medium text-orange-800">Checked Out</p>
+                        <p class="font-medium text-orange-800">Collected</p>
                         <p class="text-orange-700">{{ $currentCheckout->created_at->format('M j, Y g:i A') }}</p>
                     </div>
                     <div>
@@ -66,10 +66,87 @@
             <form action="{{ route('kiosk.process-checkin', $key) }}" method="POST" id="checkin-form">
                 @csrf
                 
+                <!-- Returner Selection -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Who is returning the key? *</label>
+                    
+                    <div class="space-y-3">
+                        <!-- Same Person -->
+                        <div class="flex items-center">
+                            <input type="radio" id="same_person" name="returned_by_same_person" value="1" 
+                                   class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300" checked>
+                            <label for="same_person" class="ml-3 block text-sm font-medium text-gray-700">
+                                <span class="font-semibold">Same Person</span> - {{ $currentCheckout->holder_name }} is returning the key
+                            </label>
+                        </div>
+                        
+                        <!-- Different Person -->
+                        <div class="flex items-center">
+                            <input type="radio" id="different_person" name="returned_by_same_person" value="0" 
+                                   class="focus:ring-blue-500 h-4 w-4 text-blue-600 border-gray-300">
+                            <label for="different_person" class="ml-3 block text-sm font-medium text-gray-700">
+                                <span class="font-semibold">Different Person</span> - Someone else is returning on their behalf
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Different Person Returner Details -->
+                <div id="differentPersonSection" class="hidden space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200 mb-6">
+                    <h4 class="font-semibold text-gray-900">Returner Information</h4>
+                    
+                    <!-- Returner Type -->
+                    <div>
+                        <label for="returned_by_type" class="block text-sm font-medium text-gray-700 mb-1">
+                            Returner Type *
+                        </label>
+                        <select name="returned_by_type" id="returned_by_type" 
+                                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                            <option value="">Select Type</option>
+                            <option value="hr">HR Staff</option>
+                            <option value="perm_manual">Permanent Staff</option>
+                            <option value="temp">Temporary Staff</option>
+                            <option value="visitor">Visitor/Other</option>
+                        </select>
+                    </div>
+
+                    <!-- Returner Search -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Search Returner
+                        </label>
+                        <div class="relative">
+                            <input type="text" id="returner_search" 
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                                   placeholder="Search by name, phone, or ID...">
+                            <div id="returner_results" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                        </div>
+                    </div>
+
+                    <!-- Manual Returner Details -->
+                    <div id="manualReturnerDetails" class="space-y-3">
+                        <div>
+                            <label for="returned_by_name" class="block text-sm font-medium text-gray-700 mb-1">
+                                Returner Name *
+                            </label>
+                            <input type="text" name="returned_by_name" id="returned_by_name"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="returned_by_phone" class="block text-sm font-medium text-gray-700 mb-1">
+                                Returner Phone *
+                            </label>
+                            <input type="text" name="returned_by_phone" id="returned_by_phone"
+                                   class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Signature Capture -->
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-gray-700 mb-2">
-                        Return Signature (Optional)
+                        Returner Signature *
                     </label>
                     <div class="border-2 border-dashed border-gray-300 rounded-md p-4">
                         <canvas id="signature-pad" width="600" height="200" 
@@ -153,6 +230,80 @@ document.addEventListener('DOMContentLoaded', function() {
     const canvas = document.getElementById('signature-pad');
     signaturePad = new SignaturePad(canvas);
     
+    // Toggle different person section
+    const samePersonRadio = document.getElementById('same_person');
+    const differentPersonRadio = document.getElementById('different_person');
+    const differentPersonSection = document.getElementById('differentPersonSection');
+
+    function toggleReturnerSection() {
+        if (differentPersonRadio.checked) {
+            differentPersonSection.classList.remove('hidden');
+        } else {
+            differentPersonSection.classList.add('hidden');
+        }
+    }
+
+    samePersonRadio.addEventListener('change', toggleReturnerSection);
+    differentPersonRadio.addEventListener('change', toggleReturnerSection);
+
+    // Returner search functionality
+    const returnerSearch = document.getElementById('returner_search');
+    const returnerResults = document.getElementById('returner_results');
+    let searchTimeout;
+
+    returnerSearch.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        const query = this.value.trim();
+        
+        if (query.length < 2) {
+            returnerResults.classList.add('hidden');
+            return;
+        }
+
+        searchTimeout = setTimeout(() => {
+            fetch(`{{ route('kiosk.search-holder') }}?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    returnerResults.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        returnerResults.classList.add('hidden');
+                        return;
+                    }
+
+                    data.forEach(person => {
+                        const div = document.createElement('div');
+                        div.className = 'p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0';
+                        div.innerHTML = `
+                            <div class="font-medium text-gray-900">${person.name}</div>
+                            <div class="text-sm text-gray-600">${person.phone} • ${person.type_label}</div>
+                            ${person.dept ? `<div class="text-xs text-gray-500">${person.dept}</div>` : ''}
+                        `;
+                        div.addEventListener('click', function() {
+                            document.querySelector('select[name="returned_by_type"]').value = person.type;
+                            document.querySelector('input[name="returned_by_name"]').value = person.name;
+                            document.querySelector('input[name="returned_by_phone"]').value = person.phone;
+                            if (person.type !== 'visitor') {
+                                document.querySelector('input[name="returned_by_id"]').value = person.id;
+                            }
+                            returnerResults.classList.add('hidden');
+                            returnerSearch.value = person.name;
+                        });
+                        returnerResults.appendChild(div);
+                    });
+                    
+                    returnerResults.classList.remove('hidden');
+                });
+        }, 300);
+    });
+
+    // Hide results when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!returnerSearch.contains(e.target) && !returnerResults.contains(e.target)) {
+            returnerResults.classList.add('hidden');
+        }
+    });
+
     // Handle file upload preview
     document.getElementById('photo-upload').addEventListener('change', function(e) {
         const file = e.target.files[0];
@@ -165,6 +316,29 @@ document.addEventListener('DOMContentLoaded', function() {
                 stopCamera();
             };
             reader.readAsDataURL(file);
+        }
+    });
+
+    // Form validation
+    document.getElementById('checkin-form').addEventListener('submit', function(e) {
+        if (!signaturePad.isEmpty()) {
+            document.getElementById('signature-data').value = signaturePad.toDataURL();
+        } else {
+            e.preventDefault();
+            alert('Please provide a signature to complete the checkin.');
+            return;
+        }
+        
+        if (document.getElementById('different_person').checked) {
+            const name = document.querySelector('input[name="returned_by_name"]').value.trim();
+            const phone = document.querySelector('input[name="returned_by_phone"]').value.trim();
+            const type = document.querySelector('select[name="returned_by_type"]').value;
+            
+            if (!name || !phone || !type) {
+                e.preventDefault();
+                alert('Please fill in all required returner information.');
+                return;
+            }
         }
     });
 });
@@ -216,12 +390,5 @@ function stopCamera() {
         cameraStream = null;
     }
 }
-
-// Handle form submission
-document.getElementById('checkin-form').addEventListener('submit', function(e) {
-    if (!signaturePad.isEmpty()) {
-        document.getElementById('signature-data').value = signaturePad.toDataURL();
-    }
-});
 </script>
 @endpush
